@@ -1,0 +1,32 @@
+﻿@{
+    ViewData["Title"] = "Otel Fiyat Hesaplama";
+}
+
+<h2>Otel Fiyat Hesaplama</h2>
+
+<div>
+    <label for="hotel">Otel Seçin:</label>
+    <select id="hotel">
+        <option value="">Seçiniz</option>
+    </select>
+</div>
+<div>
+    <label for="roomType">Oda Tipi Seçin:</label>
+    <select id="roomType">
+        <option value="">Seçiniz</option>
+    </select>
+</div>
+<div>
+    <label for="adults">Yetişkin Sayısı:</label>
+    <input type="number" id="adults" value="1" min="1">
+</div>
+<div>
+    <label for="childrenCount">Çocuk Sayısı:</label>
+    <input type="number" id="childrenCount" value="0" min="0">
+</div>
+<div id="childrenAges"></div>
+<button id="calculatePriceButton">Hesapla</button>
+
+<p id="totalPrice"></p>
+
+<script src="~/js/site.js"></script>
