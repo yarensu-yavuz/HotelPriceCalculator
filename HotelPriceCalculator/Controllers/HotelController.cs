@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using HotelPriceCalculator.Models;
 using OfficeOpenXml;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -85,7 +86,8 @@ namespace HotelPriceCalculator.Controllers
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
-            var roomTypes = new List<RoomType>();
+            var roomOptions = new List<RoomOption>();
+            var seasons = new List<Season>();
             string? fileName = GetFileNameFromHotelName(hotelName);
             if (fileName == null)
             {
@@ -95,18 +97,52 @@ namespace HotelPriceCalculator.Controllers
             using (var package = new ExcelPackage(new FileInfo($"Data/{fileName}")))
             {
                 var worksheet = package.Workbook.Worksheets[0];
-                for (int row = 8; row <= worksheet.Dimension.Rows; row++) 
+             
+                for (int row = 10; row <= worksheet.Dimension.Rows; row++)
                 {
                     var roomName = worksheet.Cells[row, 1].Text;
                     if (string.IsNullOrEmpty(roomName)) break;
 
-                    var priceText = worksheet.Cells[row, 3].Text;
-                    if (decimal.TryParse(priceText, out decimal price))
+                    var roomTypes = new List<RoomType>();
+                    for (int col = 2; col < worksheet.Dimension.Columns; col += 3)
                     {
-                        roomTypes.Add(new RoomType
+                        var roomTypeName = worksheet.Cells[row, col].Text;
+                        var priceText = worksheet.Cells[row, col + 1].Text;
+                        var multiplierText = worksheet.Cells[row, col + 2].Text;
+
+                        if (decimal.TryParse(priceText, out decimal price) && decimal.TryParse(multiplierText, out decimal multiplier))
                         {
-                            Name = roomName,
-                            Price = price
+                            roomTypes.Add(new RoomType
+                            {
+                                Name = roomTypeName,
+                                Price = price,
+                                Multiplier = multiplier
+                            });
+                        }
+                    }
+
+                    roomOptions.Add(new RoomOption
+                    {
+                        RoomName = roomName,
+                        RoomTypes = roomTypes
+                    });
+                }
+
+                // Sezon bilgileri
+                for (int col = 3; col < worksheet.Dimension.Columns; col += 2)
+                {
+                    var seasonName = worksheet.Cells[7, col].Text;
+                    var startDateText = worksheet.Cells[7, col].Text;
+                    var endDateText = worksheet.Cells[7,col + 1].Text;
+
+                    if (DateTime.TryParse(startDateText, out DateTime startDate) && DateTime.TryParse(endDateText, out DateTime endDate))
+                    {
+                        seasons.Add(new Season
+                        {
+                            SeasonName = seasonName,
+                            StartDate = startDate,
+                            EndDate = endDate,
+                            Price = roomOptions.FirstOrDefault()?.RoomTypes.FirstOrDefault()?.Price ?? 0
                         });
                     }
                 }
@@ -115,10 +151,10 @@ namespace HotelPriceCalculator.Controllers
             return new HotelRoomInfo
             {
                 HotelName = hotelName,
-                RoomTypes = roomTypes
+                RoomOptions = roomOptions,
+                Seasons = seasons
             };
         }
-
 
         private string? GetFileNameFromHotelName(string hotelName)
         {
@@ -140,12 +176,21 @@ namespace HotelPriceCalculator.Controllers
         private decimal CalculateTotalPrice(PriceCalculationRequest request)
         {
             var hotelRoomInfo = GetHotelRoomInfoFromExcel(request.HotelName);
-            var roomType = hotelRoomInfo?.RoomTypes.First(rt => rt.Name == request.RoomType);
+            var roomOption = hotelRoomInfo?.RoomOptions.FirstOrDefault(ro => ro.RoomName == request.RoomOption);
+            var roomType = roomOption?.RoomTypes.FirstOrDefault(rt => rt.Name == request.RoomType);
             if (roomType == null) throw new Exception("Invalid room type.");
 
-            decimal basePrice = roomType.Price;
+            decimal totalPrice = 0;
 
-            decimal totalPrice = basePrice * request.Adults + CalculateChildrenPrice(request.ChildrenAges, request.HotelName) * basePrice;
+            for (DateTime date = request.StartDate; date <= request.EndDate; date = date.AddDays(1))
+            {
+                var season = hotelRoomInfo.Seasons.FirstOrDefault(s => date >= s.StartDate && date <= s.EndDate);
+                if (season != null)
+                {
+                    totalPrice += season.Price * roomType.Multiplier;
+                    totalPrice += CalculateChildrenPrice(request.ChildrenAges, request.HotelName) * roomType.Price;
+                }
+            }
 
             return totalPrice;
         }

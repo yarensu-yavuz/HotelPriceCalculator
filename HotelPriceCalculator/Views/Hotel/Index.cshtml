@@ -11,6 +11,12 @@
     </select>
 </div>
 <div>
+    <label for="roomOption">Oda Seçeneği:</label>
+    <select id="roomOption">
+        <option value="">Seçiniz</option>
+    </select>
+</div>
+<div>
     <label for="roomType">Oda Tipi Seçin:</label>
     <select id="roomType">
         <option value="">Seçiniz</option>
@@ -25,6 +31,14 @@
     <input type="number" id="childrenCount" value="0" min="0">
 </div>
 <div id="childrenAges"></div>
+<div>
+    <label for="startDate">Başlangıç Tarihi:</label>
+    <input type="date" id="startDate">
+</div>
+<div>
+    <label for="endDate">Bitiş Tarihi:</label>
+    <input type="date" id="endDate">
+</div>
 <button id="calculatePriceButton">Hesapla</button>
 
 <p id="totalPrice"></p>
